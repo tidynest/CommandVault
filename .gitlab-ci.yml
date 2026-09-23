@@ -1,0 +1,18 @@
+stages:
+  - check
+
+variables:
+  CARGO_TERM_COLOR: always
+
+# iced loads Wayland, X11 and Vulkan at runtime through dlopen, so the build needs
+# no system packages and the unit tests open no window.
+check:
+  stage: check
+  image: rust:latest
+  before_script:
+    - rustup component add rustfmt clippy
+  script:
+    - cargo fmt --all -- --check
+    - cargo clippy --all-targets -- -D warnings
+    - cargo test --all
+    - cargo build --release

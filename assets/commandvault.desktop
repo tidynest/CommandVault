@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=CommandVault
+Comment=Store and search shell commands
+Exec=command_vault
+Icon=commandvault
+Terminal=false
+Categories=Utility;Development;
+Keywords=shell;commands;snippets;clipboard;

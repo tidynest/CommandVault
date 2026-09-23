@@ -1,0 +1,12 @@
+# cargo-audit settings. Advisories listed here are still reported by
+# `cargo audit --json`.
+
+[advisories]
+ignore = [
+    # lru 0.16.4 via iced 0.14 -> cryoglyph 0.1.0. Informational "unsound":
+    # LruCache::pop() is not panic-safe if a key's Drop panics. cryoglyph keys
+    # are cosmic_text::CacheKey (plain Copy data, no Drop), so the path cannot
+    # be reached. cryoglyph pins lru = "0.16" on master too; revisit when a
+    # cryoglyph release moves to lru >= 0.18.2.
+    "RUSTSEC-2026-0253",
+]

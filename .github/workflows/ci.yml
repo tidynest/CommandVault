@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  # Manual trigger, so a run lost to a queue backlog or an Actions outage can be
+  # restarted without an empty commit: gh workflow run ci.yml --ref main
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # iced loads Wayland, X11 and Vulkan at runtime through dlopen, so the build
+      # needs no system packages and the unit tests open no window.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Test
+        run: cargo test --all
+      - name: Build
+        run: cargo build --release
+
+  # cargo-deny runs advisories, licences, bans and sources from deny.toml, the
+  # same RustSec database cargo-audit reads, so there is no separate audit job.
+  deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: EmbarkStudios/cargo-deny-action@v2
