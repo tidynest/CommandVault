@@ -130,7 +130,14 @@ pub struct Settings {
     pub clear_after: u64,
     /// Rows without description, path and chips, so more of them fit. Ctrl+Shift+B.
     pub compact: bool,
+    /// Column widths in layout pixels, set by dragging the gaps beside the list.
+    pub sidebar_width: f32,
+    pub form_width: f32,
 }
+
+/// Column widths of a fresh install, which fill a window at the minimum size.
+pub const SIDEBAR_WIDTH: f32 = 220.0;
+pub const FORM_WIDTH: f32 = 320.0;
 
 impl Default for Settings {
     fn default() -> Self {
@@ -143,6 +150,8 @@ impl Default for Settings {
             sidebar: true,
             clear_after: 30,
             compact: false,
+            sidebar_width: SIDEBAR_WIDTH,
+            form_width: FORM_WIDTH,
         }
     }
 }
@@ -195,11 +204,13 @@ mod tests {
             sidebar: false,
             clear_after: 0,
             compact: true,
+            sidebar_width: 180.0,
+            form_width: 400.0,
         })
         .unwrap();
         assert_eq!(
             json,
-            r#"{"sort":"recent","scheme":"dark","zoom":1.0,"sidebar":false,"clear_after":0,"compact":true}"#,
+            r#"{"sort":"recent","scheme":"dark","zoom":1.0,"sidebar":false,"clear_after":0,"compact":true,"sidebar_width":180.0,"form_width":400.0}"#,
             "no window key until a close"
         );
         let sized = Settings {
@@ -212,7 +223,7 @@ mod tests {
         let json = serde_json::to_string(&sized).unwrap();
         assert_eq!(
             json,
-            r#"{"sort":"title","scheme":"system","window":{"width":1280.0,"height":800.0},"zoom":1.0,"sidebar":true,"clear_after":30,"compact":false}"#
+            r#"{"sort":"title","scheme":"system","window":{"width":1280.0,"height":800.0},"zoom":1.0,"sidebar":true,"clear_after":30,"compact":false,"sidebar_width":220.0,"form_width":320.0}"#
         );
         assert_eq!(serde_json::from_str::<Settings>(&json).unwrap(), sized);
         let back: Settings = serde_json::from_str(r#"{"sort":"recent","future":1}"#).unwrap();

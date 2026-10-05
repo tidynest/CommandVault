@@ -8,7 +8,7 @@ use iced::advanced::widget::{Id, Operation};
 use iced::keyboard::{self, key};
 use iced::widget::scrollable::AbsoluteOffset;
 use iced::widget::text_editor;
-use iced::{Event, Rectangle, Size, Subscription, Task, Vector, event, window};
+use iced::{Event, Rectangle, Size, Subscription, Task, Vector, event, mouse, window};
 use uuid::Uuid;
 
 use crate::config::{self, Scheme, Settings, Sort, WindowSize};
@@ -34,6 +34,21 @@ const PAGE: isize = 10;
 const UNDO_DEPTH: usize = 20;
 const ZOOM_STEP: f32 = 0.1;
 const ZOOM_RANGE: std::ops::RangeInclusive<f32> = 0.5..=2.0;
+/// Page padding on each side, and the width of a draggable gap between two columns.
+pub(crate) const EDGE: f32 = 16.0;
+pub(crate) const GAP: f32 = 24.0;
+/// The narrowest each column may get. The default widths and `LIST_MIN` fill a window
+/// at `MIN_SIZE` exactly.
+const SIDEBAR_MIN: f32 = 160.0;
+const FORM_MIN: f32 = 260.0;
+const LIST_MIN: f32 = 340.0;
+
+/// The gap being dragged: left of the list resizes the sidebar, right of it the form.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum Divider {
+    Sidebar,
+    Form,
+}
 
 pub(crate) struct App {
     /// `None` when there is nowhere safe to write, so edits stay in memory only.
@@ -70,6 +85,8 @@ pub(crate) struct App {
     pub(crate) copy_generation: u64,
     /// The sidebar entry under the pointer, `Some(None)` for All. View only.
     pub(crate) hovered: Option<Option<Uuid>>,
+    /// The gap under a held mouse button, with the column's width when the press began.
+    pub(crate) dragging: Option<(Divider, f32)>,
 }
 
 pub(crate) struct Fill {
@@ -231,6 +248,14 @@ pub(crate) enum Message {
     CloseHelp,
     /// The pointer entered a sidebar entry, or left one with `None`.
     HoverCategory(Option<Option<Uuid>>),
+    /// A press on a gap beside the list. Mouse events reach `update` until the release.
+    DragStart(Divider),
+    /// The pointer's x while a gap is held.
+    DragTo(f32),
+    /// Button released or pointer gone: saves the widths if they changed.
+    DragEnd,
+    /// A double-click on a gap: both columns back to their default widths, saved.
+    ResetWidths,
     /// The clipboard read back `Settings.clear_after` seconds after `copied` went in.
     /// Wiped only while it still holds that text and no later copy has been made.
     ClipboardRead {
@@ -339,6 +364,7 @@ impl App {
             help: false,
             copy_generation: 0,
             hovered: None,
+            dragging: None,
             fill_memory: HashMap::new(),
         };
         (app, iced::widget::operation::focus(SEARCH_ID))
@@ -810,6 +836,37 @@ impl App {
             Message::ToggleHelp => self.help = !self.help,
             Message::CloseHelp => self.help = false,
             Message::HoverCategory(entry) => self.hovered = entry,
+            Message::DragStart(divider) => self.dragging = Some((divider, self.width(divider))),
+            Message::DragTo(x) => {
+                let (sidebar, form) = self.widths();
+                let room = self.room();
+                // The gap's centre follows the pointer, and the list keeps LIST_MIN.
+                match self.dragging {
+                    Some((Divider::Sidebar, _)) => {
+                        self.settings.sidebar_width =
+                            (x - EDGE - GAP / 2.0).min(room - form).max(SIDEBAR_MIN);
+                    }
+                    Some((Divider::Form, _)) => {
+                        self.settings.form_width = (self.window_width() - EDGE - GAP / 2.0 - x)
+                            .min(room - sidebar)
+                            .max(FORM_MIN);
+                    }
+                    None => {}
+                }
+            }
+            Message::DragEnd => {
+                if let Some((divider, before)) = self.dragging.take()
+                    && self.width(divider) != before
+                {
+                    self.save_settings("Column widths saved");
+                }
+            }
+            Message::ResetWidths => {
+                self.dragging = None;
+                self.settings.sidebar_width = config::SIDEBAR_WIDTH;
+                self.settings.form_width = config::FORM_WIDTH;
+                self.save_settings("Column widths reset");
+            }
             Message::ToggleCompact => {
                 self.settings.compact = !self.settings.compact;
                 let what = if self.settings.compact {
@@ -1155,6 +1212,39 @@ impl App {
         };
     }
 
+    /// The window's width in layout pixels, the minimum until the first resize arrives.
+    fn window_width(&self) -> f32 {
+        let s = &self.settings;
+        s.window.map_or(MIN_SIZE.width, |w| w.width / s.zoom)
+    }
+
+    /// What the sidebar and the form may share once the list has `LIST_MIN`.
+    fn room(&self) -> f32 {
+        let gaps = if self.settings.sidebar { 2.0 } else { 1.0 };
+        self.window_width() - 2.0 * EDGE - gaps * GAP - LIST_MIN
+    }
+
+    /// Sidebar and form widths to draw, 0 for a hidden sidebar. A window too narrow for
+    /// the saved widths shrinks the form first, then the sidebar, down to their minimums.
+    /// The saved widths stay, so a wider window brings them back.
+    pub(crate) fn widths(&self) -> (f32, f32) {
+        let (s, room) = (&self.settings, self.room());
+        let sidebar = if s.sidebar {
+            s.sidebar_width.min(room - FORM_MIN).max(SIDEBAR_MIN)
+        } else {
+            0.0
+        };
+        (sidebar, s.form_width.min(room - sidebar).max(FORM_MIN))
+    }
+
+    fn width(&self, divider: Divider) -> f32 {
+        let (sidebar, form) = self.widths();
+        match divider {
+            Divider::Sidebar => sidebar,
+            Divider::Form => form,
+        }
+    }
+
     /// `None` follows the system, so a switch on the desktop reaches a running app.
     pub(crate) fn theme(&self) -> Option<iced::Theme> {
         self.settings.scheme.theme()
@@ -1166,13 +1256,18 @@ impl App {
     }
 
     /// Keys through `on_event`, the file poll, plus window resizes and the close button.
+    /// Pointer moves only while a gap is held, so plain mouse motion costs nothing.
     pub(crate) fn subscription(&self) -> Subscription<Message> {
-        Subscription::batch([
-            event::listen_with(on_event),
-            Subscription::run(ticks),
-            window::resize_events().map(|(_, size)| Message::Resized(size)),
-            window::close_requests().map(Message::CloseRequested),
-        ])
+        Subscription::batch(
+            [
+                event::listen_with(on_event),
+                Subscription::run(ticks),
+                window::resize_events().map(|(_, size)| Message::Resized(size)),
+                window::close_requests().map(Message::CloseRequested),
+            ]
+            .into_iter()
+            .chain(self.dragging.map(|_| event::listen_with(on_drag))),
+        )
     }
 
     /// Pick list entries: the `None` entry first, then the tree indented by depth.
@@ -1333,9 +1428,15 @@ impl Operation<Option<f32>> for Measure {
 /// Keys no widget consumed, the focused search box passes Up and Down through,
 /// which is what `keyboard::listen` gives. F1 comes through captured or not, the
 /// key panel sits over every widget, and a captured Escape only closes that panel.
+/// A left-button release ends any drag. It is heard here rather than in `on_drag`,
+/// which starts a frame late and could miss a quick click's release.
 fn on_event(event: Event, status: event::Status, _window: window::Id) -> Option<Message> {
-    let Event::Keyboard(pressed) = event else {
-        return None;
+    let pressed = match event {
+        Event::Keyboard(pressed) => pressed,
+        Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
+            return Some(Message::DragEnd);
+        }
+        _ => return None,
     };
     let named = match &pressed {
         keyboard::Event::KeyPressed {
@@ -1348,6 +1449,16 @@ fn on_event(event: Event, status: event::Status, _window: window::Id) -> Option<
         (Some(key::Named::F1), _) => Some(Message::ToggleHelp),
         (Some(key::Named::Escape), event::Status::Captured) => Some(Message::CloseHelp),
         (_, event::Status::Ignored) => Some(Message::Key(pressed)),
+        _ => None,
+    }
+}
+
+/// Pointer moves while a gap is held. The pointer leaves the gap as soon as it moves,
+/// so the gap's own `mouse_area` cannot follow it. The window keeps receiving pointer
+/// events until the release, even with the pointer outside it.
+fn on_drag(event: Event, _status: event::Status, _window: window::Id) -> Option<Message> {
+    match event {
+        Event::Mouse(mouse::Event::CursorMoved { position }) => Some(Message::DragTo(position.x)),
         _ => None,
     }
 }
