@@ -18,6 +18,7 @@ CommandVault/
 │   ├── main.rs           # --version and --help, settings load, window setup, entry point
 │   ├── app.rs            # App state, Message, update, helpers
 │   ├── app/tests.rs      # Message-loop tests
+│   ├── app/tests/bench.rs  # Ignored benchmarks over ten thousand commands
 │   ├── view.rs           # view, view_sidebar, widget helpers, two pure-helper tests
 │   ├── config.rs         # Settings, Sort, Scheme, config.json, env override
 │   ├── export.rs         # Markdown export

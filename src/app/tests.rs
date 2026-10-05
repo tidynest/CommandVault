@@ -1,5 +1,7 @@
 use super::*;
 
+mod bench;
+
 #[test]
 fn step_clamps_and_starts_at_first() {
     let ids: Vec<Uuid> = (0..3).map(|_| Uuid::new_v4()).collect();
@@ -816,27 +818,6 @@ fn a_tick_reloads_the_vault_when_the_file_changed_on_disk() {
     assert_eq!(app.vault.commands[0].command_text, "theirs");
     assert_eq!(app.status, "Reloaded 1 commands, the file changed on disk.");
     std::fs::remove_dir_all(dir).unwrap();
-}
-
-#[test]
-#[ignore = "a measurement, run with --ignored and read the time"]
-fn search_over_ten_thousand_commands_is_fast_enough() {
-    let mut app = app();
-    for i in 0..10_000 {
-        app.vault.commands.push(Command::new(Draft {
-            title: format!("Command number {i}"),
-            command_text: format!("echo {i} && ls -la /tmp/{i}"),
-            description: "a description with some words in it".into(),
-            tags: vec![format!("tag{}", i % 50)],
-            ..Draft::default()
-        }));
-    }
-    app.search = "echo 99 tag4".into();
-    let start = std::time::Instant::now();
-    let n = app.visible().len();
-    let took = start.elapsed();
-    eprintln!("visible() over 10000 commands, {n} hits: {took:?}");
-    assert!(took.as_millis() < 500, "a keystroke must not lag: {took:?}");
 }
 
 #[test]
