@@ -313,8 +313,8 @@ impl App {
                 vault.ensure_tags();
                 log::info!("loaded {} commands", vault.commands.len());
                 let status = format!(
-                    "Loaded {} commands from {}.",
-                    vault.commands.len(),
+                    "Loaded {} from {}.",
+                    commands_label(vault.commands.len()),
                     path.as_deref().map_or_else(String::new, storage::tidy)
                 );
                 (vault, status)
@@ -529,7 +529,8 @@ impl App {
                     self.remember(Undo::TagRemoved { tag, ids });
                     if self.persist() {
                         self.status = format!(
-                            "Removed tag \"{name}\" from {count} commands. Undo puts it back."
+                            "Removed tag \"{name}\" from {}. Undo puts it back.",
+                            commands_label(count)
                         );
                     }
                 }
@@ -556,7 +557,8 @@ impl App {
                         vault.ensure_tags();
                         self.vault = vault;
                         self.vault_mtime = storage::modified(path);
-                        self.status = format!("Reloaded {} commands.", self.vault.commands.len());
+                        self.status =
+                            format!("Reloaded {}.", commands_label(self.vault.commands.len()));
                         if let Some(id) = self.selected_category
                             && !self.vault.categories.iter().any(|c| c.id == id)
                         {
@@ -651,7 +653,7 @@ impl App {
                         self.reset_form();
                     }
                     if self.persist() {
-                        self.status = format!("Removed the {} imported commands.", ids.len());
+                        self.status = format!("Removed the import, {}.", commands_label(ids.len()));
                     }
                 }
                 None => {}
@@ -932,14 +934,20 @@ impl App {
                         });
                         match written {
                             Ok(()) => format!(
-                                "Exported {count} commands to {}, .sh, .csv and .json, Markdown copied.",
-                                p.display()
+                                "Exported {} to {}, .sh, .csv and .json, Markdown copied.",
+                                commands_label(count),
+                                storage::tidy(&p)
                             ),
-                            Err(e) => format!("Copied {count} commands, file write failed: {e}"),
+                            Err(e) => {
+                                format!("Copied {}, file write failed: {e}", commands_label(count))
+                            }
                         }
                     }
                     None => {
-                        format!("Copied Markdown for {count} commands, no directory to write to.")
+                        format!(
+                            "Copied Markdown for {}, no directory to write to.",
+                            commands_label(count)
+                        )
                     }
                 };
                 return iced::clipboard::write(md.clone()).chain(self.clear_later(md));
@@ -1075,12 +1083,9 @@ impl App {
                         self.reset_category_form();
                     }
                     if self.persist() {
-                        let commands = match moved {
-                            1 => "1 command".to_owned(),
-                            n => format!("{n} commands"),
-                        };
                         self.status = format!(
-                            "Removed \"{name}\". {commands} and any subcategories moved up, Undo puts them back."
+                            "Removed \"{name}\". {} and any subcategories moved up, Undo puts them back.",
+                            commands_label(moved)
                         );
                     }
                 }
@@ -1101,7 +1106,8 @@ impl App {
         }
         if self.persist() {
             self.status = format!(
-                "Imported {count} commands used twice or more from {source}. Undo removes them."
+                "Imported {} used twice or more from {source}. Undo removes them.",
+                commands_label(count)
             );
         }
     }
@@ -1466,6 +1472,14 @@ fn on_drag(event: Event, _status: event::Status, _window: window::Id) -> Option<
     match event {
         Event::Mouse(mouse::Event::CursorMoved { position }) => Some(Message::DragTo(position.x)),
         _ => None,
+    }
+}
+
+/// "1 command" or "n commands", for the status line.
+fn commands_label(n: usize) -> String {
+    match n {
+        1 => "1 command".into(),
+        n => format!("{n} commands"),
     }
 }
 
