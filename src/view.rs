@@ -104,8 +104,9 @@ impl App {
         let list = scrollable(
             Column::with_children(results)
                 .extend(empty.map(|t| text(t).size(14).into()))
-                .spacing(16)
-                .width(Length::Fill),
+                .spacing(if self.settings.compact { 8 } else { 16 })
+                .width(Length::Fill)
+                .padding(BAR_ROOM),
         )
         .id(LIST_ID);
 
@@ -208,10 +209,14 @@ impl App {
         let page: Element<'_, Message> =
             column![
             row![
-                text_input("Search. Up and Down select, Enter copies", &self.search)
-                    .id(SEARCH_ID)
-                    .on_input(Message::SearchChanged)
-                    .on_submit(Message::CopySelected),
+                // A short placeholder, the box is narrow at the minimum width.
+                hint(
+                    text_input("Search", &self.search)
+                        .id(SEARCH_ID)
+                        .on_input(Message::SearchChanged)
+                        .on_submit(Message::CopySelected),
+                    "Up and Down select, Enter copies, F1 lists every key",
+                ),
                 pick_list(Sort::ALL, Some(self.settings.sort), Message::SortChanged),
                 // Fixed, or the longest theme name sets the width and squeezes the search.
                 pick_list(
@@ -426,7 +431,8 @@ fn tag_query(name: &str) -> String {
     }
 }
 
-/// Right padding inside the sidebar scrollables, so the bar does not cover the counts.
+/// Right padding inside the scrollables, so the bar covers neither the sidebar counts
+/// nor the row buttons.
 const BAR_ROOM: Padding = Padding {
     top: 0.0,
     right: 12.0,

@@ -814,7 +814,7 @@ fn a_tick_reloads_the_vault_when_the_file_changed_on_disk() {
     storage::save(&path, &other).unwrap();
     send(&mut app, [Message::Tick]);
     assert_eq!(app.vault.commands[0].command_text, "theirs");
-    assert_eq!(app.status, "Reloaded 1 commands, the file changed on disk.");
+    assert_eq!(app.status, "Reloaded 1 command, the file changed on disk.");
     std::fs::remove_dir_all(dir).unwrap();
 }
 
@@ -1125,7 +1125,7 @@ fn export_reports_the_visible_count() {
         [Message::SearchChanged("two".into()), Message::Export],
     );
     assert!(
-        app.status.starts_with("Copied Markdown for 1 commands"),
+        app.status.starts_with("Copied Markdown for 1 command,"),
         "{}",
         app.status
     );
@@ -1217,4 +1217,11 @@ fn tag_rename_flow_through_messages() {
         [Message::TagRenameStart("files".into()), Message::Reset],
     );
     assert!(app.tag_rename.is_none(), "Escape cancels a rename");
+}
+
+#[test]
+fn status_counts_say_command_for_one() {
+    assert_eq!(commands_label(0), "0 commands");
+    assert_eq!(commands_label(1), "1 command");
+    assert_eq!(commands_label(2), "2 commands");
 }

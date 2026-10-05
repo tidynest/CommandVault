@@ -2,6 +2,15 @@
 
 Versions are tagged on `main`. Dates are the day the version was cut.
 
+## Unreleased
+
+### Fixes
+
+- The list's scrollbar no longer covers the Delete buttons.
+- Status lines say "1 command" instead of "1 commands", and the export status shortens the home directory to `~` like the load message.
+- The search placeholder is just "Search", which fits at the minimum width. Its tooltip has the old hint.
+- Compact rows sit closer together, so more of them fit.
+
 ## 0.5.0, 2026-09-12
 
 ### Window and keyboard
