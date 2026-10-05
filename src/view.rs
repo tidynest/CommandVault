@@ -1,21 +1,27 @@
 use iced::border;
 use iced::keyboard::{self, key};
+use iced::mouse;
 use iced::widget::{
     Column, Row, TextInput, button, center, column, container, mouse_area, opaque, pick_list, row,
-    scrollable, stack, text, text_editor, text_input, tooltip,
+    rule, scrollable, stack, text, text_editor, text_input, tooltip,
 };
 use iced::{Alignment, Color, Element, Font, Length, Padding, Theme};
 use uuid::Uuid;
 
 use crate::app::{
-    App, CATEGORY_ID, FILL_ID, LIST_ID, Message, SEARCH_ID, TAG_RENAME_ID, TITLE_ID, row_id,
+    App, CATEGORY_ID, Divider, EDGE, FILL_ID, GAP, LIST_ID, Message, SEARCH_ID, TAG_RENAME_ID,
+    TITLE_ID, row_id,
 };
 use crate::config::{Scheme, Sort};
 use crate::model;
 
 impl App {
     pub(crate) fn view(&self) -> Element<'_, Message> {
-        let sidebar = self.settings.sidebar.then(|| self.view_sidebar());
+        let (sidebar_width, form_width) = self.widths();
+        let sidebar = self
+            .settings
+            .sidebar
+            .then(|| [self.view_sidebar(sidebar_width), divider(Divider::Sidebar)]);
         let sidebar_toggle = if self.settings.sidebar {
             "Hide sidebar"
         } else {
@@ -145,7 +151,7 @@ impl App {
                 .spacing(8),
         ]
         .spacing(8)
-        .width(320);
+        .width(form_width);
 
         let status_row: Element<'_, Message> = if let Some(r) = &self.tag_rename {
             row![
@@ -235,15 +241,15 @@ impl App {
                 hint(button("Keys").on_press(Message::ToggleHelp), "Every key, F1"),
             ]
             .spacing(12),
-            Row::with_children(sidebar)
+            Row::with_children(sidebar.into_iter().flatten())
                 .push(list)
+                .push(divider(Divider::Form))
                 .push(form)
-                .spacing(24)
                 .height(Length::Fill),
             status_row,
         ]
             .spacing(12)
-            .padding(16)
+            .padding(EDGE)
             .into();
         if !self.help {
             return page;
@@ -288,7 +294,7 @@ impl App {
         .into()
     }
 
-    fn view_sidebar(&self) -> Element<'_, Message> {
+    fn view_sidebar(&self, width: f32) -> Element<'_, Message> {
         let look = |id: Option<Uuid>| {
             if id == self.selected_category {
                 Look::Selected
@@ -381,7 +387,7 @@ impl App {
         .extend((!tags.is_empty()).then(|| container(scrollable(tag_list)).max_height(160).into()))
         .push(form)
         .spacing(8)
-        .width(220)
+        .width(width)
         .into()
     }
 }
@@ -509,6 +515,20 @@ fn hint<'a>(
         .style(container::rounded_box)
         .padding(6)
         .into()
+}
+
+/// The gap beside the list, with a line down its middle. Drag it to resize the column
+/// on the far side, double-click it for the default widths.
+fn divider<'a>(which: Divider) -> Element<'a, Message> {
+    mouse_area(
+        container(rule::vertical(1))
+            .center_x(GAP)
+            .height(Length::Fill),
+    )
+    .interaction(mouse::Interaction::ResizingHorizontally)
+    .on_press(Message::DragStart(which))
+    .on_double_click(Message::ResetWidths)
+    .into()
 }
 
 /// "1 copy" or "n copies", nothing while a command has never been copied.

@@ -76,6 +76,7 @@ fn app() -> App {
         help: false,
         copy_generation: 0,
         hovered: None,
+        dragging: None,
     }
 }
 
@@ -1215,4 +1216,60 @@ fn tag_rename_flow_through_messages() {
         [Message::TagRenameStart("files".into()), Message::Reset],
     );
     assert!(app.tag_rename.is_none(), "Escape cancels a rename");
+}
+
+#[test]
+fn dragging_a_gap_resizes_its_column_and_keeps_the_list_room() {
+    let mut app = app();
+    app.settings.window = Some(WindowSize {
+        width: 1400.0,
+        height: 800.0,
+    });
+    assert_eq!(app.widths(), (220.0, 320.0), "defaults");
+
+    // The gap's centre follows the pointer: 16 padding plus half the 24 gap.
+    send(
+        &mut app,
+        [Message::DragStart(Divider::Sidebar), Message::DragTo(328.0)],
+    );
+    assert_eq!(app.widths(), (300.0, 320.0));
+    send(&mut app, [Message::DragTo(10.0)]);
+    assert_eq!(app.widths().0, 160.0, "sidebar minimum");
+    send(&mut app, [Message::DragTo(2000.0)]);
+    // 1400 less 32 padding, two gaps, a 340 list and the 320 form.
+    assert_eq!(app.widths().0, 660.0, "the list keeps its minimum");
+    send(&mut app, [Message::DragEnd]);
+    assert_eq!(app.status, "Column widths saved for this session only.");
+    assert_eq!(app.dragging, None);
+
+    app.status.clear();
+    send(
+        &mut app,
+        [Message::DragStart(Divider::Form), Message::DragEnd],
+    );
+    assert!(
+        app.status.is_empty(),
+        "a click without a move saves nothing"
+    );
+
+    send(
+        &mut app,
+        [
+            Message::ResetWidths,
+            Message::DragStart(Divider::Form),
+            Message::DragTo(1400.0 - 28.0 - 400.0),
+            Message::DragEnd,
+        ],
+    );
+    assert_eq!(app.widths(), (220.0, 400.0));
+
+    // A narrower window squeezes the form first and leaves the saved width alone.
+    app.settings.window = Some(WindowSize {
+        width: 960.0,
+        height: 600.0,
+    });
+    assert_eq!(app.widths(), (220.0, 320.0));
+    assert_eq!(app.settings.form_width, 400.0);
+    send(&mut app, [Message::ResetWidths]);
+    assert_eq!(app.status, "Column widths reset for this session only.");
 }

@@ -12,6 +12,10 @@ Versions are tagged on `main`. Dates are the day the version was cut.
 
 - Benchmarks in `src/app/tests/bench.rs` time search, sorting, save and load, export and the category tree over ten thousand commands. The README says how to run them.
 
+### Window and keyboard
+
+- Drag the gap on either side of the list to resize the sidebar or the form. Double-click a gap for the default widths. Both are saved, and the list keeps at least 340 pixels.
+
 ## 0.5.0, 2026-09-12
 
 ### Window and keyboard
