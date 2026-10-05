@@ -241,7 +241,7 @@ pub(crate) enum Message {
     /// The window's close button. Saves settings, then closes, which ends the app.
     CloseRequested(window::Id),
     /// Markdown of the visible commands to `export.md` beside the vault and to the
-    /// clipboard, and a shell script of the same commands to `export.sh`.
+    /// clipboard, and the same commands as `export.sh`, `export.csv` and `export.json`.
     Export,
     /// Puts the last deleted command back, or removes the last import.
     Undo,
@@ -861,15 +861,21 @@ impl App {
             Message::Export => {
                 let rows = self.visible();
                 let count = rows.len();
-                let md = export::markdown(&self.vault, &rows);
-                let sh = export::shell(&self.vault, &rows);
+                let v = &self.vault;
+                let md = export::markdown(v, &rows);
                 self.status = match self.path.as_ref().map(|p| p.with_file_name("export.md")) {
                     Some(p) => {
-                        let written = storage::write_private(&p, &md)
-                            .and_then(|()| storage::write_private(&p.with_extension("sh"), &sh));
+                        let written = export::json(v, &rows).and_then(|json| {
+                            let (sh, csv) = (export::shell(v, &rows), export::csv(v, &rows));
+                            [("md", &md), ("sh", &sh), ("csv", &csv), ("json", &json)]
+                                .into_iter()
+                                .try_for_each(|(ext, text)| {
+                                    storage::write_private(&p.with_extension(ext), text)
+                                })
+                        });
                         match written {
                             Ok(()) => format!(
-                                "Exported {count} commands to {} and .sh and copied.",
+                                "Exported {count} commands to {}, .sh, .csv and .json, Markdown copied.",
                                 p.display()
                             ),
                             Err(e) => format!("Copied {count} commands, file write failed: {e}"),

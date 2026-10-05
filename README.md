@@ -46,7 +46,7 @@ required.
 - Edit and delete in place. Every change is written to disk at once. A row shows how many times it has been copied. The star on a row pins the command to the top under every order.
 - Placeholders: write `{{host}}` in a command and Copy first asks for a value per name, in a row where the status line sits. `{{port=22}}` prefills 22, and a value typed once is offered again for that name until the app closes. Enter copies the filled command, As is copies the template, the stored one keeps its markers.
 - Import pulls the 50 most used commands from your shell history, those used twice or more, tagged `history`, into the selected category. Reads `$HISTFILE`, else the zsh, bash or fish history file. Commands already in the vault are skipped, so it is safe to repeat, and Undo removes the whole batch.
-- Export the visible commands as Markdown, grouped by category, to `export.md` beside the vault and to the clipboard, and as a shell script to `export.sh`, each command under a comment with its title, description, category and tags. Filter first to export one category.
+- Export the visible commands as Markdown, grouped by category, to `export.md` beside the vault and to the clipboard, and as a shell script to `export.sh`, each command under a comment with its title, description, category and tags. `export.csv` is a spreadsheet with one row per command, and a cell that starts with `=`, `+`, `-` or `@` gets a leading `'` so a spreadsheet shows it as text instead of running it. `export.json` is a vault file holding just those commands with their categories and tag colours, so it can be opened as a vault of its own. Filter first to export one category.
 - A copy is wiped from the clipboard 30 seconds later if it is still there, since commands carry tokens. A later copy of something else is left alone. `clear_after` in the settings changes the delay, 0 keeps the copy.
 
 ## Files and settings
@@ -94,11 +94,10 @@ Settings live in `config.json` next to the vault. The window size is written the
 cargo test
 ```
 
-The suite has 70 tests and `cargo test` runs 69 of them. 37 drive the app
-through its message loop without opening a window, 31 are unit tests inside
-the modules, and `tests/cli.rs` runs the built binary with `--version`,
-`--help` and a bad flag. The 70th times a search over ten thousand commands
-and is ignored by default. Run it with
+Most tests drive the app through its message loop without opening a window,
+the rest are unit tests inside the modules, and `tests/cli.rs` runs the built
+binary with `--version`, `--help` and a bad flag. One test times a search over
+ten thousand commands and is ignored by default. Run it with
 `cargo test --release -- --ignored --nocapture` and read the time it prints.
 
 ```bash

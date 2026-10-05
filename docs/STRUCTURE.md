@@ -20,7 +20,7 @@ CommandVault/
 │   ├── app/tests.rs      # Message-loop tests
 │   ├── view.rs           # view, view_sidebar, widget helpers, two pure-helper tests
 │   ├── config.rs         # Settings, Sort, Scheme, config.json, env override
-│   ├── export.rs         # Markdown export
+│   ├── export.rs         # Markdown, shell, CSV and JSON export
 │   ├── history.rs        # zsh, bash and fish history import
 │   ├── model.rs          # Command, Category, Tag, Draft, Vault, search, placeholders, tree
 │   └── storage.rs        # Vault path, load, atomic save, conflict copy
@@ -31,7 +31,7 @@ CommandVault/
 └── image_data/           # Lucidchart CSV exports behind the SVGs
 ```
 
-Data lives at `$XDG_CONFIG_HOME/commandvault/vault.json`, falling back to `~/.config/commandvault/vault.json`, with `config.json`, `export.md` and the `.bak` copies beside it.
+Data lives at `$XDG_CONFIG_HOME/commandvault/vault.json`, falling back to `~/.config/commandvault/vault.json`, with `config.json`, the `export.*` files and the `.bak` copies beside it.
 
 ## Planned growth
 

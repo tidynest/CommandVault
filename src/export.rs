@@ -1,5 +1,7 @@
 use std::fmt::Write;
+use std::io;
 
+use chrono::SecondsFormat;
 use uuid::Uuid;
 
 use crate::model::{Command, Vault};
@@ -67,6 +69,75 @@ pub fn shell(vault: &Vault, commands: &[&Command]) -> String {
         let _ = writeln!(out, "{}", c.command_text);
     }
     out
+}
+
+/// A vault document holding only the given commands, the categories above them and the
+/// colours of their tags, so it loads as a vault file of its own. The lossless export.
+pub fn json(vault: &Vault, commands: &[&Command]) -> io::Result<String> {
+    let subset = Vault {
+        commands: commands.iter().map(|&c| c.clone()).collect(),
+        categories: vault
+            .categories
+            .iter()
+            .filter(|cat| {
+                commands
+                    .iter()
+                    .any(|c| vault.is_within(c.category_id, cat.id))
+            })
+            .cloned()
+            .collect(),
+        tags: vault
+            .tags
+            .iter()
+            .filter(|t| commands.iter().any(|c| c.tags.contains(&t.name)))
+            .cloned()
+            .collect(),
+    };
+    serde_json::to_string_pretty(&subset).map_err(io::Error::other)
+}
+
+/// A spreadsheet of the given commands in their given order, a header row first and
+/// CRLF line ends as RFC 4180 has them.
+pub fn csv(vault: &Vault, commands: &[&Command]) -> String {
+    let mut out =
+        String::from("title,command,description,category,tags,pinned,copies,created,updated\r\n");
+    for c in commands {
+        let (path, tags) = (vault.path_of(c.category_id), c.tags.join(", "));
+        let (pinned, copies) = (c.pinned.to_string(), c.copies.to_string());
+        let [created, updated] =
+            [c.created_at, c.updated_at].map(|t| t.to_rfc3339_opts(SecondsFormat::Secs, true));
+        let row = [
+            &c.title,
+            &c.command_text,
+            &c.description,
+            &path,
+            &tags,
+            &pinned,
+            &copies,
+            &created,
+            &updated,
+        ]
+        .map(|s| cell(s));
+        out.push_str(&row.join(","));
+        out.push_str("\r\n");
+    }
+    out
+}
+
+/// Quotes a CSV field when it needs it. A spreadsheet runs a cell starting with `=`,
+/// `+`, `-` or `@` as a formula, and a command can start with any of them, so such a
+/// cell gets a leading `'`, the usual guard. The JSON export keeps the text exact.
+fn cell(s: &str) -> String {
+    let s = if s.starts_with(['=', '+', '-', '@', '\t', '\r']) {
+        format!("'{s}")
+    } else {
+        s.to_owned()
+    };
+    if s.contains([',', '"', '\n', '\r']) {
+        format!("\"{}\"", s.replace('"', "\"\""))
+    } else {
+        s
+    }
 }
 
 fn known(vault: &Vault, id: Option<Uuid>) -> bool {
@@ -142,6 +213,45 @@ mod tests {
 
         let expected = "#!/usr/bin/env bash\n# CommandVault export, 2 commands\n\n# Tunnel\n# Two\n# lines\n# linux, tags: net\nssh -L 80:x:80 h\n\n# Loose\necho one\necho two\n";
         assert_eq!(sh, expected);
+    }
+
+    #[test]
+    fn json_keeps_the_categories_above_and_the_tags_of_the_given_commands() {
+        let mut v = Vault::default();
+        let linux = v.add_category("linux".into(), None);
+        let ssh = v.add_category("ssh".into(), Some(linux));
+        v.add_category("windows".into(), None);
+        v.commands
+            .push(command("Tunnel", "ssh -L 80:x:80 h", Some(ssh), &["net"]));
+        v.commands.push(command("Other", "ls", None, &["files"]));
+        v.ensure_tags();
+        let only_tunnel = [&v.commands[0]];
+
+        let back: Vault = serde_json::from_str(&json(&v, &only_tunnel).unwrap()).unwrap();
+
+        assert_eq!(back.commands.len(), 1);
+        assert_eq!(back.path_of(back.commands[0].category_id), "linux / ssh");
+        assert_eq!(back.categories.len(), 2, "windows left out");
+        let net: Vec<_> = v.tags.iter().filter(|t| t.name == "net").cloned().collect();
+        assert_eq!(back.tags, net, "only the net colour");
+    }
+
+    #[test]
+    fn csv_quotes_fields_and_guards_formula_cells() {
+        let mut v = Vault::default();
+        let linux = v.add_category("linux".into(), None);
+        let mut c = command("Say \"hi\"", "=cmd|' /C calc'!A0", Some(linux), &["a", "b"]);
+        c.description = "two\nlines".into();
+        v.commands.push(c);
+        let all: Vec<&Command> = v.commands.iter().collect();
+
+        let out = csv(&v, &all);
+
+        assert!(out.starts_with("title,command,description,category,tags,"));
+        assert!(out.contains(
+            "\r\n\"Say \"\"hi\"\"\",'=cmd|' /C calc'!A0,\"two\nlines\",linux,\"a, b\",false,0,"
+        ));
+        assert!(out.ends_with("Z\r\n"));
     }
 
     #[test]

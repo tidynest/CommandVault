@@ -2,6 +2,12 @@
 
 Versions are tagged on `main`. Dates are the day the version was cut.
 
+## Unreleased
+
+### Files
+
+- Export also writes `export.csv`, one row per command, with formula-looking cells guarded by a leading `'`, and `export.json`, a vault file of the visible commands with their categories and tag colours.
+
 ## 0.5.0, 2026-09-12
 
 ### Window and keyboard

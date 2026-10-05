@@ -222,7 +222,7 @@ impl App {
                 .width(190),
                 hint(
                     button("Export").on_press(Message::Export),
-                    "The visible commands as Markdown to export.md and the clipboard, and as a script to export.sh",
+                    "The visible commands as Markdown to export.md and the clipboard, and to export.sh, export.csv and export.json",
                 ),
                 hint(
                     button("Import").on_press(Message::ImportHistory),

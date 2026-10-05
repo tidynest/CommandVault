@@ -1129,6 +1129,23 @@ fn export_reports_the_visible_count() {
         "{}",
         app.status
     );
+
+    let dir = std::env::temp_dir().join(format!("commandvault-test-{}", Uuid::new_v4()));
+    app.path = Some(dir.join("vault.json"));
+    send(&mut app, [Message::Export]);
+    assert!(
+        app.status.starts_with("Exported 1 commands"),
+        "{}",
+        app.status
+    );
+    for ext in ["md", "sh", "csv", "json"] {
+        let text = std::fs::read_to_string(dir.join("export").with_extension(ext)).unwrap();
+        assert!(
+            text.contains("two") && !text.contains("one"),
+            "{ext}: {text}"
+        );
+    }
+    std::fs::remove_dir_all(dir).unwrap();
 }
 
 #[test]
