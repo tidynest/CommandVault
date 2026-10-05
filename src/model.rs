@@ -205,8 +205,8 @@ impl Command {
     /// `"docker rm"` in quotes has to appear as written. `tag:name` needs a tag of
     /// exactly that name and `cat:name` a category of that name on the path. An empty
     /// query matches everything.
-    // Known limit: lowercases every field per keystroke. 1.8 ms for 10k commands in release
-    // on 2026-09-12, the ignored test in app/tests.rs measures it. An index past ~100k.
+    // Known limit: lowercases every field per keystroke. 2.5 ms for 10k commands in release
+    // on 2026-10-05, measured by app/tests/bench.rs. An index past ~100k.
     pub fn matches(&self, query: &str, path: &str) -> bool {
         let fields: Vec<String> = [&self.title, &self.description, &self.command_text]
             .into_iter()
@@ -427,7 +427,8 @@ impl Vault {
     }
 
     /// Depth-first order, siblings sorted by name, each with its depth for indentation.
-    // Known limit: rescans the list per level, fine below a few hundred categories.
+    // Known limit: rescans the list per level. 0.5 ms for a thousand categories in release on
+    // 2026-10-05, measured by app/tests/bench.rs.
     pub fn tree(&self) -> Vec<(usize, &Category)> {
         let mut out = Vec::with_capacity(self.categories.len());
         self.push_children(None, 0, &mut out);

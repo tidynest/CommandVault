@@ -8,6 +8,10 @@ Versions are tagged on `main`. Dates are the day the version was cut.
 
 - Export also writes `export.csv`, one row per command, with formula-looking cells guarded by a leading `'`, and `export.json`, a vault file of the visible commands with their categories and tag colours.
 
+### Development
+
+- Benchmarks in `src/app/tests/bench.rs` time search, sorting, save and load, export and the category tree over ten thousand commands. The README says how to run them.
+
 ## 0.5.0, 2026-09-12
 
 ### Window and keyboard

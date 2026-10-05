@@ -96,9 +96,17 @@ cargo test
 
 Most tests drive the app through its message loop without opening a window,
 the rest are unit tests inside the modules, and `tests/cli.rs` runs the built
-binary with `--version`, `--help` and a bad flag. One test times a search over
-ten thousand commands and is ignored by default. Run it with
-`cargo test --release -- --ignored --nocapture` and read the time it prints.
+binary with `--version`, `--help` and a bad flag.
+
+The benchmarks in `src/app/tests/bench.rs` time search, every sort order, save
+and load, export and the category tree over a vault of ten thousand commands.
+They are ignored by default. Run them in release and read the medians:
+
+```bash
+cargo test --release bench -- --ignored --nocapture --test-threads=1
+```
+
+Search takes a few milliseconds there, saving and loading about ten each.
 
 ```bash
 cargo clippy --all-targets -- -D warnings
