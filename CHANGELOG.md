@@ -8,6 +8,10 @@ Versions are tagged on `main`. Dates are the day the version was cut.
 
 - Export also writes `export.csv`, one row per command, with formula-looking cells guarded by a leading `'`, and `export.json`, a vault file of the visible commands with their categories and tag colours.
 
+### Commands and search
+
+- Search splits the query once per keystroke instead of once per command, and with nothing typed it no longer lowercases every command at all. Over ten thousand commands a three-word search takes 1.6 ms, down from 2.4, and an empty one with a sidebar category 0.2 ms, down from 1.5.
+
 ### Development
 
 - Benchmarks in `src/app/tests/bench.rs` time search, sorting, save and load, export and the category tree over ten thousand commands. The README says how to run them.

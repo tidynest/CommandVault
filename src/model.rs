@@ -199,22 +199,29 @@ impl Command {
         self.updated_at = Utc::now();
     }
 
-    /// Every term of the query must appear, case-insensitively, in the title,
-    /// description, command text, a tag or the given category path. Terms may hit
+    /// [`Command::matches_terms`] for a query string, split here.
+    #[cfg(test)]
+    pub fn matches(&self, query: &str, path: &str) -> bool {
+        self.matches_terms(&terms(query), path)
+    }
+
+    /// Every word of a query split by [`terms`] must appear, case-insensitively, in the
+    /// title, description, command text, a tag or the given category path. Words may hit
     /// different fields, so `docker rm` finds a docker title with rm in the text, while
     /// `"docker rm"` in quotes has to appear as written. `tag:name` needs a tag of
-    /// exactly that name and `cat:name` a category of that name on the path. An empty
-    /// query matches everything.
-    // Known limit: lowercases every field per keystroke. 2.5 ms for 10k commands in release
-    // on 2026-10-05, measured by app/tests/bench.rs. An index past ~100k.
-    pub fn matches(&self, query: &str, path: &str) -> bool {
+    /// exactly that name and `cat:name` a category of that name on the path. No words
+    /// match everything.
+    // Known limit: lowercases every field per keystroke while a search is typed. 1.6 ms for
+    // 10k commands in release on 2026-10-11, measured by app/tests/bench.rs. An index past
+    // ~100k.
+    pub fn matches_terms(&self, words: &[String], path: &str) -> bool {
         let fields: Vec<String> = [&self.title, &self.description, &self.command_text]
             .into_iter()
             .chain(&self.tags)
             .map(|s| s.to_lowercase())
             .chain(std::iter::once(path.to_lowercase()))
             .collect();
-        terms(query).iter().all(|term| {
+        words.iter().all(|term| {
             if let Some(name) = term.strip_prefix("tag:") {
                 names_one(self.tags.iter().map(String::as_str), name)
             } else if let Some(name) = term.strip_prefix("cat:") {

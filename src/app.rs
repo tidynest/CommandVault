@@ -14,7 +14,7 @@ use uuid::Uuid;
 use crate::config::{self, Scheme, Settings, Sort, WindowSize};
 use crate::export;
 use crate::history;
-use crate::model::{Category, Command, Draft, Tag, Vault, fill, placeholders, title_for};
+use crate::model::{Category, Command, Draft, Tag, Vault, fill, placeholders, terms, title_for};
 use crate::storage;
 
 pub(crate) const SEARCH_ID: &str = "search";
@@ -1188,12 +1188,15 @@ impl App {
 
     /// Commands that pass the search and category filter, in the configured order.
     pub(crate) fn visible(&self) -> Vec<&Command> {
+        // Split once, not once per command. With no words every command matches, so no
+        // field is lowercased and no path is built.
+        let words = terms(&self.search);
         let mut rows: Vec<&Command> = self
             .vault
             .commands
             .iter()
             .filter(|c| {
-                c.matches(&self.search, &self.vault.path_of(c.category_id))
+                (words.is_empty() || c.matches_terms(&words, &self.vault.path_of(c.category_id)))
                     && self
                         .selected_category
                         .is_none_or(|a| self.vault.is_within(c.category_id, a))
