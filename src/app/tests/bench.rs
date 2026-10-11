@@ -64,7 +64,12 @@ fn bench_search_and_category_filter() {
     let mut app = big_app();
     app.search = "echo 99 tag4".into();
     let search = median("search, three terms", || app.visible().len());
-    app.search = "cat:\"topic 3\"".into();
+    // Quoted whole, as a chip click quotes a tag. `cat:"topic 3"` splits into two words.
+    app.search = "\"cat:topic 3\"".into();
+    assert!(
+        !app.visible().is_empty(),
+        "the cat: search must find its topic"
+    );
     let prefix = median("search, a cat: prefix", || app.visible().len());
     app.search.clear();
     app.selected_category = app.vault.categories.first().map(|c| c.id);

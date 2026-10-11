@@ -11,6 +11,7 @@ Versions are tagged on `main`. Dates are the day the version was cut.
 ### Development
 
 - Benchmarks in `src/app/tests/bench.rs` time search, sorting, save and load, export and the category tree over ten thousand commands. The README says how to run them.
+- The bench's `cat:` search quotes the whole word, as a chip click does. Written as `cat:"topic 3"` it split into two words and matched nothing.
 
 ### Window and keyboard
 
