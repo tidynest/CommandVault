@@ -28,6 +28,12 @@ ignore = [
     # iced's font and macro stack with no upgrade path until iced swaps them.
     { id = "RUSTSEC-2024-0436", reason = "paste unmaintained; transitive macro dep via iced_wgpu" },
     { id = "RUSTSEC-2026-0192", reason = "ttf-parser unmaintained; transitive via cosmic-text and fontdb under iced" },
+    # Also "unmaintained" notices: zbus 6 took these three crates in as its own
+    # modules. iced_winit reaches zbus 5 through mundy, which reads the
+    # desktop's UI preferences such as dark mode. They go when iced moves on.
+    { id = "RUSTSEC-2026-0370", reason = "zvariant unmaintained, merged into zbus 6; transitive via zbus 5 under mundy and iced_winit" },
+    { id = "RUSTSEC-2026-0371", reason = "zbus_names unmaintained, merged into zbus 6; transitive via zbus 5 under mundy and iced_winit" },
+    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive unmaintained, merged into zbus 6; transitive via zbus 5 under mundy and iced_winit" },
 ]
 
 [bans]

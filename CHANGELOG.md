@@ -16,6 +16,7 @@ Versions are tagged on `main`. Dates are the day the version was cut.
 
 - Benchmarks in `src/app/tests/bench.rs` time search, sorting, save and load, export and the category tree over ten thousand commands. The README says how to run them.
 - The bench's `cat:` search quotes the whole word, as a chip click does. Written as `cat:"topic 3"` it split into two words and matched nothing.
+- `cargo deny check` passes again. The lockfile moves off two yanked releases, to async-executor 1.14.1 and clipboard-win 5.4.3, and `deny.toml` lists the October notices that zvariant, zvariant_derive and zbus_names are unmaintained. zbus 6 took them in, and they reach the app through iced.
 
 ### Window and keyboard
 
